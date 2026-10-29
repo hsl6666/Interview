@@ -1,4 +1,6 @@
 import unittest
+from types import SimpleNamespace
+from app.services.auth import require_user
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -24,6 +26,7 @@ class CandidateProfileTest(unittest.TestCase):
             with sessions() as db:
                 yield db
 
+        app.dependency_overrides[require_user] = lambda: SimpleNamespace(user_id="test-owner")
         app.dependency_overrides[get_db] = database
         self.client = TestClient(app)
 

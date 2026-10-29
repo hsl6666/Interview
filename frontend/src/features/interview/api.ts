@@ -1,4 +1,5 @@
 import axios from "axios";
+import { redirectExpiredLogin } from "../auth/navigation";
 import type {
   CandidateProfile,
   AssistantChatMessage,
@@ -31,8 +32,17 @@ export const PUBLIC_BASE_URL = import.meta.env.VITE_PUBLIC_BASE_URL || API_BASE_
 
 const client = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   timeout: 30_000,
 });
+
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error)) redirectExpiredLogin(error.response?.status || 0);
+    return Promise.reject(error);
+  },
+);
 
 export async function createOrUpdateSession(sessionId: string, profile: CandidateProfile) {
   const { data } = await client.post<InterviewSession>("/api/sessions", {
@@ -91,6 +101,7 @@ export async function streamChatWithInterviewAssistant(
 ) {
   const response = await fetch(`${API_BASE_URL}/api/admin/interview-assistant/chat/stream`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       session_id: sessionId,
@@ -99,6 +110,7 @@ export async function streamChatWithInterviewAssistant(
   });
 
   if (!response.ok || !response.body) {
+    redirectExpiredLogin(response.status);
     let detail = "智能体回答失败，请确认模型配置和后端服务可用";
     try {
       const data = await response.json();
@@ -114,9 +126,7 @@ export async function streamChatWithInterviewAssistant(
   let buffer = "";
 
   function consumeFrame(frame: string) {
-    const dataLine = frame
-      .split("\n")
-      .find((line) => line.startsWith("data:"));
+    const dataLine = frame.split("\n").find((line) => line.startsWith("data:"));
     if (!dataLine) return;
     const payload = JSON.parse(dataLine.slice(5).trim()) as AssistantStreamChunk;
     if (payload.type === "error") {
@@ -185,7 +195,10 @@ export async function createAdminOralQuestionSet(payload: OralQuestionSetCreate)
   return data;
 }
 
-export async function updateAdminOralQuestionSet(setId: string, payload: Partial<Pick<OralQuestionSet, "name" | "description" | "published">>) {
+export async function updateAdminOralQuestionSet(
+  setId: string,
+  payload: Partial<Pick<OralQuestionSet, "name" | "description" | "published">>,
+) {
   const { data } = await client.patch<OralQuestionSet>(`/api/admin/oral-question-sets/${setId}`, payload);
   return data;
 }
@@ -250,7 +263,9 @@ export async function deleteAdminWrittenQuestion(questionId: string) {
 }
 
 export async function fetchAdminOralQuestions(setId?: string) {
-  const { data } = await client.get<OralQuestion[]>("/api/admin/oral-questions", { params: { set_id: setId } });
+  const { data } = await client.get<OralQuestion[]>("/api/admin/oral-questions", {
+    params: { set_id: setId },
+  });
   return data;
 }
 
@@ -389,6 +404,8 @@ export function resolveAssetUrl(url: string) {
 }
 
 export async function testAdminModelConnection() {
-  const { data } = await client.post<ModelConnectionResult>("/api/admin/model-config/test", undefined, { timeout: 30_000 });
+  const { data } = await client.post<ModelConnectionResult>("/api/admin/model-config/test", undefined, {
+    timeout: 30_000,
+  });
   return data;
 }

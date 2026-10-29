@@ -1,29 +1,28 @@
 import asyncio
 from contextlib import suppress
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
-from app.api import daily_brief, interview_assistant, interview_config, model_config, positions, questions, results, rtc, sessions
+from app.api import auth, protected_files, daily_brief, interview_assistant, interview_config, model_config, positions, questions, results, rtc, sessions
 from app.core.config import get_settings
 from app.db import init_db
+from app.services.auth import protect_admin_routes
 
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="1.0.0")
+app = FastAPI(title=settings.app_name, version="1.0.0", dependencies=[Depends(protect_admin_routes)])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin, "http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+):\d+",
+    allow_origins=[settings.frontend_origin.rstrip("/")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")
-app.mount("/snapshots", StaticFiles(directory=settings.snapshots_dir), name="snapshots")
+app.include_router(protected_files.router)
 
+app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(questions.router)
 app.include_router(positions.router)

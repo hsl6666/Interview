@@ -8,6 +8,13 @@ import type {
 } from "./types";
 
 const SESSION_KEY = "ai-interview-session-id";
+let interviewAccountId = "";
+export function setInterviewAccount(userId: string) {
+  interviewAccountId = userId;
+}
+function accountSessionKey() {
+  return `${SESSION_KEY}:${interviewAccountId}`;
+}
 const PROFILE_PREFIX = "ai-interview-profile:";
 const ANSWERS_PREFIX = "ai-interview-answers:";
 const ORAL_PREFIX = "ai-interview-oral:";
@@ -49,10 +56,10 @@ export const emptyProfile: CandidateProfile = {
 };
 
 export function getInterviewSessionId() {
-  const existing = localStorage.getItem(SESSION_KEY);
+  const existing = localStorage.getItem(accountSessionKey());
   if (existing) return existing;
   const next = createSessionId();
-  localStorage.setItem(SESSION_KEY, next);
+  localStorage.setItem(accountSessionKey(), next);
   return next;
 }
 
@@ -65,7 +72,7 @@ export function getBasicEntrySessionId() {
 
 export function resetInterviewSession() {
   const next = createSessionId();
-  localStorage.setItem(SESSION_KEY, next);
+  localStorage.setItem(accountSessionKey(), next);
   return next;
 }
 

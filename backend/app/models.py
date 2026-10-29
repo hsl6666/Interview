@@ -25,6 +25,8 @@ class InterviewSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
+    ownership: Mapped["InterviewOwnership | None"] = relationship(cascade="all, delete-orphan", uselist=False)
+
     attachments: Mapped[list["Attachment"]] = relationship(
         back_populates="session",
         cascade="all, delete-orphan",
@@ -249,3 +251,29 @@ class DailyBriefRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AdminLoginSession(Base):
+    __tablename__ = "admin_login_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64))
+    username: Mapped[str] = mapped_column(String(120))
+    display_name: Mapped[str] = mapped_column(String(200))
+    expires_at: Mapped[int] = mapped_column(Integer, index=True)
+
+
+class OAuthLoginAttempt(Base):
+    __tablename__ = "oauth_login_attempts"
+
+    state_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    browser_hash: Mapped[str] = mapped_column(String(64))
+    next_path: Mapped[str] = mapped_column(String(1000))
+    expires_at: Mapped[int] = mapped_column(Integer, index=True)
+
+
+class InterviewOwnership(Base):
+    __tablename__ = "interview_ownership"
+
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)

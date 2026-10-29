@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     uploads_dir: Path = Path("./data/uploads")
     snapshots_dir: Path = Path("./data/snapshots")
     oral_recordings_dir: Path = Path("./data/oral_recordings")
+    linuxdo_client_id: str = ""
+    linuxdo_client_secret: str = ""
+    linuxdo_redirect_uri: str = ""
+    linuxdo_admin_ids: str = ""
+    auth_session_hours: int = 12
     zhipu_api_key: str = ""
     glm_model: str = "glm-4.6"
     interview_minutes: int = 30

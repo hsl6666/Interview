@@ -44,7 +44,7 @@ class CandidateProfile(BaseModel):
 
 
 class SessionCreate(BaseModel):
-    session_id: Optional[str] = None
+    session_id: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
     role: str = ""
     candidate_profile: CandidateProfile = Field(default_factory=CandidateProfile)
 

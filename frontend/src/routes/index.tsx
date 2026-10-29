@@ -1,8 +1,10 @@
-import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, type RouteObject } from "react-router-dom";
 import { ProgressBar } from "@/components/ProgressBar";
 import { echartsDemoRoute } from "./echarts-demo";
 import { landingRoute } from "./landing";
 import { ROUTE_PATHS } from "@/constants/common";
+
+import RequireAdmin, { RequireLogin } from "@/features/auth/RequireAdmin";
 
 const routes: RouteObject[] = [
   {
@@ -42,23 +44,47 @@ const routes: RouteObject[] = [
       },
       {
         path: "results",
-        lazy: async () => ({
-          Component: (await import("@/features/interview/pages/ResultsPage")).default,
-        }),
+        lazy: async () => {
+          const ResultsPage = (await import("@/features/interview/pages/ResultsPage")).default;
+          return {
+            Component: () => (
+              <RequireAdmin>
+                <ResultsPage />
+              </RequireAdmin>
+            ),
+          };
+        },
         HydrateFallback: ProgressBar,
       },
       {
         path: "results/written",
-        lazy: async () => ({
-          Component: (await import("@/features/interview/pages/WrittenAnswersReviewPage")).default,
-        }),
+        lazy: async () => {
+          const WrittenAnswersReviewPage = (
+            await import("@/features/interview/pages/WrittenAnswersReviewPage")
+          ).default;
+          return {
+            Component: () => (
+              <RequireAdmin>
+                <WrittenAnswersReviewPage />
+              </RequireAdmin>
+            ),
+          };
+        },
         HydrateFallback: ProgressBar,
       },
       {
         path: "results/oral",
-        lazy: async () => ({
-          Component: (await import("@/features/interview/pages/OralAnswersReviewPage")).default,
-        }),
+        lazy: async () => {
+          const OralAnswersReviewPage = (await import("@/features/interview/pages/OralAnswersReviewPage"))
+            .default;
+          return {
+            Component: () => (
+              <RequireAdmin>
+                <OralAnswersReviewPage />
+              </RequireAdmin>
+            ),
+          };
+        },
         HydrateFallback: ProgressBar,
       },
     ],
@@ -186,13 +212,30 @@ const routes: RouteObject[] = [
   },
 ];
 
-export const router = createBrowserRouter(routes, {
-  basename: import.meta.env.VITE_APP_BASE_URL,
-  future: {
-    v7_relativeSplatPath: true,
-    v7_fetcherPersist: true,
-    v7_normalizeFormMethod: true,
-    v7_partialHydration: true,
-    v7_skipActionErrorRevalidation: true,
+export const router = createBrowserRouter(
+  [
+    {
+      path: "/login",
+      lazy: async () => ({ Component: (await import("@/features/auth/LoginPage")).default }),
+      HydrateFallback: ProgressBar,
+    },
+    {
+      element: (
+        <RequireLogin>
+          <Outlet />
+        </RequireLogin>
+      ),
+      children: routes,
+    },
+  ],
+  {
+    basename: import.meta.env.VITE_APP_BASE_URL,
+    future: {
+      v7_relativeSplatPath: true,
+      v7_fetcherPersist: true,
+      v7_normalizeFormMethod: true,
+      v7_partialHydration: true,
+      v7_skipActionErrorRevalidation: true,
+    },
   },
-});
+);

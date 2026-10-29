@@ -1,3 +1,4 @@
+import AccountMenu from "../../auth/AccountMenu";
 import type { PropsWithChildren } from "react";
 import { CheckCircleFilled } from "@ant-design/icons";
 
@@ -28,6 +29,9 @@ export function InterviewShell({
   return (
     <main className="min-h-screen bg-[#f6f5f0] text-stone-950">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex justify-end">
+          <AccountMenu />
+        </div>
         <header className="flex flex-col gap-5 border-b border-stone-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-800">

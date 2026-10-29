@@ -8,6 +8,11 @@ services:
       FRONTEND_ORIGIN: http://127.0.0.1:5173
       ZHIPU_API_KEY: ${ZHIPU_API_KEY:-}
       GLM_MODEL: glm-4.6
+      LINUXDO_CLIENT_ID: ${LINUXDO_CLIENT_ID:-}
+      LINUXDO_CLIENT_SECRET: ${LINUXDO_CLIENT_SECRET:-}
+      LINUXDO_REDIRECT_URI: ${LINUXDO_REDIRECT_URI:-http://127.0.0.1:8000/api/auth/linuxdo/callback}
+      LINUXDO_ADMIN_IDS: ${LINUXDO_ADMIN_IDS:-}
+      AUTH_SESSION_HOURS: ${AUTH_SESSION_HOURS:-12}
     ports:
       - "8000:8000"
     volumes:

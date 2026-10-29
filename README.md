@@ -105,3 +105,35 @@ Webhook 和签名密钥为只写配置，API 不回传其内容；数据库及�
 模型管理页提供「检测连接」：先保存配置，再发送一条不含候选人资料的简短请求。页面显示检测结果、耗时，以及密钥无效、余额不足、模型/接口不存在、限流、超时等原因。检测不修改配置，也不会将服务商原始错误或密钥返回前端。接口为 `POST /api/admin/model-config/test`。
 
 DeepSeek V4.1 Flash 使用官方调用名 `deepseek-flash`，Base URL 为 `https://api.deepseek.com`，已加入模型选项和厂商默认值，详见[官方接入说明](https://api-docs.deepseek.com/quick_start/agent_integrations/)。
+
+## LINUX DO Connect 登录
+
+整个项目需要登录：访问 `/login`，通过 LINUX DO 完成授权后返回原页面。普通账号可以参加自己的面试；管理后台、面试结果汇总及结果复盘仅限管理员。已有的历史面试保留，由管理员访问，不会自动归属给第一个登录者。
+
+在 [LINUX DO Connect](https://connect.linux.do/) 的“应用接入”中为本项目创建独立应用，获得 Client ID / Client Secret。按照 [官方文档](https://wiki.linux.do/Community/LinuxDoConnect) 使用授权码流程。配置 `backend/.env`（已被 Git 忽略）：
+
+```dotenv
+FRONTEND_ORIGIN=http://127.0.0.1:5175
+LINUXDO_CLIENT_ID=你的应用ID
+LINUXDO_CLIENT_SECRET=你的应用密钥
+LINUXDO_REDIRECT_URI=http://127.0.0.1:8011/api/auth/linuxdo/callback
+LINUXDO_ADMIN_IDS=你的LINUX_DO数字用户ID
+AUTH_SESSION_HOURS=12
+```
+
+- Connect 中的回调地址必须与 `LINUXDO_REDIRECT_URI` 完全一致，包括协议、域名、端口和路径。不能填写前端 `/login` 或网站首页。
+- 本地前端 API 地址指向 `http://127.0.0.1:8011`。使用 `127.0.0.1` 打开前后端，不要混用 `localhost`。修改后端 `.env` 后需重启后端。
+- `LINUXDO_ADMIN_IDS` 可用逗号分隔多个不可变数字 ID。留空时所有用户均为普通用户；可以先登录，访问 `/api/auth/me` 查看自己的 `id`，再由管理员将其写入配置。普通用户无法通过页面修改权限。
+- 凭证不写入前端、不进入 Git、不在登录回调 URL 中返回。后端使用 HttpOnly Cookie 和数据库会话哈希，退出时立即撤销会话，默认 12 小时过期。
+- 手机扫码上传需要手机登录与电脑相同的 LINUX DO 账号；`PUBLIC_BASE_URL` 必须是手机可访问的后端地址，正式使用建议统一 HTTPS 域名。本机 `127.0.0.1` 回调仅用于电脑联调。
+- 生产环境设 `ENVIRONMENT=production`，`FRONTEND_ORIGIN` 和回调均使用 HTTPS，并通过同站点域名访问。CORS 只允许配置的前端来源。`/api/`、`/uploads/`、`/snapshots/`、`/m/` 均反向代理到后端，不能把附件目录以 nginx alias 暴露出去。
+- 没有有效应用配置时登录按钮不可用，业务接口仍返回 401，不会自动放开访问。数据库新增会话和面试归属表，不删除旧数据。
+
+认证回归测试覆盖单次 state、浏览器绑定、授权拒绝、会话过期与撤销、角色权限、跨账号数据隔离、附件访问、回跳白名单和 Origin 校验：
+
+```bash
+cd backend
+./.venv/bin/python -m unittest discover -s tests -v
+# 在项目根目录，Node 24+
+node --test frontend/tests/*.test.mjs
+```

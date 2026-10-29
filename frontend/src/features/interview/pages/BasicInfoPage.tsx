@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 import { Button, DatePicker, Input, message, Modal, QRCode, Select, Space, Tag } from "antd";
 import dayjs from "dayjs";
+import AccountMenu from "../../auth/AccountMenu";
 import { PUBLIC_BASE_URL, createOrUpdateSession, fetchSession, patchSession, resolveAssetUrl } from "../api";
 import PositionSelect from "../components/PositionSelect";
 import { emptyProfile, getBasicEntrySessionId, loadProfile, normalizeProfile, saveProfile } from "../storage";
@@ -308,6 +309,9 @@ export default function BasicInfoPage() {
 
   return (
     <main className="min-h-screen bg-[#f4f6f9] py-9 text-[#222]">
+      <div className="mx-auto mb-4 flex w-[min(960px,calc(100%-24px))] justify-end">
+        <AccountMenu />
+      </div>
       <section className="mx-auto w-[min(960px,calc(100%-24px))] rounded-[14px] bg-white px-[38px] pb-[42px] pt-[34px] shadow-[0_18px_45px_rgba(15,23,42,0.08)] max-[760px]:my-[18px] max-[760px]:overflow-x-auto max-[760px]:px-[14px] max-[760px]:py-6">
         <h1 className="mb-[22px] mt-0 text-center text-[32px] font-medium tracking-[0.18em] max-[760px]:text-[26px]">
           面试登记表

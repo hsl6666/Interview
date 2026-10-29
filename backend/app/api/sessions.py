@@ -2,13 +2,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
+from app.services.auth import require_user, check_interview_access
+from app.models import AdminLoginSession, InterviewOwnership
 from app.db import get_db
 from app.models import Attachment, InterviewSession, InterviewSnapshot, OralRecording, Transcript
 from app.schemas import (
@@ -29,8 +31,10 @@ router = APIRouter(tags=["sessions"])
 
 
 @router.post("/api/sessions", response_model=SessionRead)
-def create_session(payload: SessionCreate, db: Session = Depends(get_db)) -> SessionRead:
+def create_session(payload: SessionCreate, db: Session = Depends(get_db), identity: AdminLoginSession = Depends(require_user), settings = Depends(get_settings)) -> SessionRead:
     session_id = payload.session_id or uuid4().hex
+    if session_id == "oral-questions":
+        raise HTTPException(422, "无效的面试编号")
     session = db.get(InterviewSession, session_id)
     profile = payload.candidate_profile.model_dump()
     if session is None:
@@ -40,7 +44,9 @@ def create_session(payload: SessionCreate, db: Session = Depends(get_db)) -> Ses
             candidate_profile=profile,
         )
         db.add(session)
+        session.ownership = InterviewOwnership(user_id=identity.user_id)
     else:
+        check_interview_access(session_id, identity, db, settings)
         session.role = payload.role or profile.get("role", session.role)
         session.candidate_profile = profile
     try:
@@ -50,6 +56,7 @@ def create_session(payload: SessionCreate, db: Session = Depends(get_db)) -> Ses
         session = db.get(InterviewSession, session_id)
         if session is None:
             raise
+        check_interview_access(session_id, identity, db, settings)
         session.role = payload.role or profile.get("role", session.role)
         session.candidate_profile = profile
         db.commit()
@@ -307,7 +314,7 @@ def save_oral_summary(
 
 
 @router.get("/m/upload", response_class=HTMLResponse)
-def mobile_upload_page(sessionId: str) -> HTMLResponse:
+def mobile_upload_page(sessionId: str = Query(..., pattern=r"^[A-Za-z0-9_-]{1,64}$")) -> HTMLResponse:
     return HTMLResponse(
         f"""
 <!doctype html>
