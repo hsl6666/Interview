@@ -19,21 +19,18 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import {
-  createAdminOralQuestion,
   createAdminWrittenQuestion,
-  deleteAdminOralQuestion,
   deleteAdminWrittenQuestion,
-  fetchAdminOralQuestions,
   fetchAdminWrittenQuestions,
   generateAdminWrittenQuestions,
-  updateAdminOralQuestion,
   updateAdminWrittenQuestion,
 } from "../../api";
+import OralQuestionSetsManager from "../components/OralQuestionSetsManager";
 import PositionSelect from "../../components/PositionSelect";
 import { DEFAULT_SYSTEM_PROMPT, questionTypeOptions } from "../constants";
 import { GeneratedQuestionModal, GeneratingQuestionModal, QuestionEditorModal } from "../components/QuestionModals";
 import { getApiErrorMessage, normalizeQuestionPayload, type QuestionFormValues } from "../utils";
-import type { OralQuestion, Question, QuestionGenerationRequest, QuestionType, WrittenQuestion } from "../../types";
+import type { Question, QuestionGenerationRequest, QuestionType, WrittenQuestion } from "../../types";
 
 type QuestionFilters = {
   keyword: string;
@@ -42,16 +39,6 @@ type QuestionFilters = {
   difficulty?: string;
   source?: string;
   published?: boolean;
-};
-
-type OralQuestionFormValues = {
-  title: string;
-  prompt: string;
-  role_tags: string;
-  difficulty: string;
-  source: string;
-  sort_order: number;
-  published: boolean;
 };
 
 const emptyFilters: QuestionFilters = { keyword: "" };
@@ -478,230 +465,13 @@ function WrittenQuestionsManager() {
   );
 }
 
-function parseRoleTags(value?: string) {
-  return value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
-}
-
-function OralQuestionsManager() {
-  const [rows, setRows] = useState<OralQuestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<OralQuestion | null>(null);
-  const [form] = Form.useForm<OralQuestionFormValues>();
-
-  useEffect(() => {
-    void loadQuestions();
-  }, []);
-
-  async function loadQuestions() {
-    setLoading(true);
-    try {
-      setRows(await fetchAdminOralQuestions());
-    } catch {
-      message.error("加载口试题失败，请确认后端服务可用");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function openCreate() {
-    setEditing(null);
-    form.resetFields();
-    form.setFieldsValue({
-      title: "",
-      prompt: "",
-      role_tags: "通用",
-      difficulty: "medium",
-      source: "manual",
-      sort_order: rows.length,
-      published: false,
-    });
-    setModalOpen(true);
-  }
-
-  function openEdit(row: OralQuestion) {
-    setEditing(row);
-    form.resetFields();
-    form.setFieldsValue({
-      title: row.title,
-      prompt: row.prompt,
-      role_tags: row.role_tags || "通用",
-      difficulty: row.difficulty,
-      source: row.source,
-      sort_order: row.sort_order,
-      published: row.published,
-    });
-    setModalOpen(true);
-  }
-
-  async function saveQuestion() {
-    const values = await form.validateFields();
-    setSaving(true);
-    try {
-      if (editing) await updateAdminOralQuestion(editing.id, values);
-      else await createAdminOralQuestion(values);
-      setModalOpen(false);
-      await loadQuestions();
-      message.success("口试题已保存");
-    } catch {
-      message.error("保存口试题失败");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function togglePublished(row: OralQuestion, published: boolean) {
-    try {
-      await updateAdminOralQuestion(row.id, { published });
-      await loadQuestions();
-    } catch {
-      message.error("发布状态更新失败");
-    }
-  }
-
-  function confirmDelete(row: OralQuestion) {
-    Modal.confirm({
-      title: "删除口试题",
-      content: `确认删除「${row.title}」？删除后不会再出现在前台口试。`,
-      okText: "删除",
-      okButtonProps: { danger: true },
-      cancelText: "取消",
-      onOk: async () => {
-        try {
-          await deleteAdminOralQuestion(row.id);
-          await loadQuestions();
-          message.success("口试题删除成功");
-        } catch {
-          message.error("口试题删除失败");
-          throw new Error("delete oral question failed");
-        }
-      },
-    });
-  }
-
-  const columns: TableColumnsType<OralQuestion> = [
-    {
-      title: "题目",
-      dataIndex: "title",
-      width: 260,
-      render: (title, row) => (
-        <div>
-          <div className="font-semibold text-stone-950">{title}</div>
-          <div className="mt-1 line-clamp-2 text-xs leading-5 text-stone-500">{row.prompt}</div>
-        </div>
-      ),
-    },
-    { title: "岗位标签", dataIndex: "role_tags", width: 140, render: (value) => value || "通用" },
-    { title: "难度", dataIndex: "difficulty", width: 100 },
-    { title: "来源", dataIndex: "source", width: 90, render: (value) => <Tag>{value}</Tag> },
-    { title: "排序", dataIndex: "sort_order", width: 90 },
-    {
-      title: "发布",
-      dataIndex: "published",
-      width: 100,
-      render: (published, row) => <Switch checked={published} onChange={(checked) => void togglePublished(row, checked)} />,
-    },
-    {
-      title: "更新时间",
-      dataIndex: "updated_at",
-      width: 160,
-      render: (value) => <span className="text-xs text-stone-500">{dayjs(value).format("YYYY-MM-DD HH:mm")}</span>,
-    },
-    {
-      title: "操作",
-      width: 150,
-      render: (_, row) => (
-        <Space>
-          <Button icon={<EditOutlined />} onClick={() => openEdit(row)} />
-          <Button danger icon={<DeleteOutlined />} onClick={() => confirmDelete(row)} />
-        </Space>
-      ),
-    },
-  ];
-
-  return (
-    <>
-      <section className="rounded-lg border border-stone-200 bg-white p-5">
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">口试题库</h2>
-            <p className="mt-1 text-sm text-stone-500">只有发布状态的题目会进入前台口试录音流程，按排序值从小到大出题。</p>
-          </div>
-          <Space>
-            <Button icon={<SyncOutlined />} onClick={() => void loadQuestions()}>
-              刷新
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              新建口试题
-            </Button>
-          </Space>
-        </div>
-
-        <Table
-          rowKey="id"
-          loading={loading}
-          columns={columns}
-          dataSource={rows}
-          scroll={{ x: 1050 }}
-          pagination={{ pageSize: 8, showSizeChanger: false }}
-          locale={{ emptyText: "暂无口试题" }}
-        />
-      </section>
-
-      <Modal
-        title={editing ? "编辑口试题" : "新建口试题"}
-        open={modalOpen}
-        width={760}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => void saveQuestion()}
-        confirmLoading={saving}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical">
-          <div className="grid gap-3 md:grid-cols-2">
-            <Form.Item label="题目标题" name="title" rules={[{ required: true, message: "请输入题目标题" }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="排序" name="sort_order" rules={[{ required: true, message: "请输入排序值" }]}>
-              <InputNumber min={0} className="w-full" />
-            </Form.Item>
-          </div>
-          <Form.Item label="题干" name="prompt" rules={[{ required: true, message: "请输入题干" }]}>
-            <Input.TextArea rows={5} />
-          </Form.Item>
-          <div className="grid gap-3 md:grid-cols-3">
-            <Form.Item
-              label="适用岗位"
-              name="role_tags"
-              getValueProps={(value) => ({ value: parseRoleTags(value) })}
-              getValueFromEvent={(value: string | string[]) => {
-                const list = Array.isArray(value) ? value.filter(Boolean) : value ? [value] : [];
-                return list.length ? list.join(",") : "通用";
-              }}
-            >
-              <PositionSelect mode="multiple" placeholder="选择适用岗位，可多选" maxTagCount="responsive" />
-            </Form.Item>
-            <Form.Item label="难度" name="difficulty">
-              <Select options={difficultyOptions} />
-            </Form.Item>
-            <Form.Item label="发布状态" name="published" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-          </div>
-        </Form>
-      </Modal>
-    </>
-  );
-}
-
 export default function QuestionsManagementPage() {
   return (
     <Tabs
       defaultActiveKey="written"
       items={[
         { key: "written", label: "笔试题管理", children: <WrittenQuestionsManager /> },
-        { key: "oral", label: "口试题管理", children: <OralQuestionsManager /> },
+        { key: "oral", label: "口试题管理", children: <OralQuestionSetsManager /> },
       ]}
     />
   );

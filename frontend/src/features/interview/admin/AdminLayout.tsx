@@ -9,16 +9,17 @@ import {
   SettingOutlined,
   SolutionOutlined,
 } from "@ant-design/icons";
-import { Button, Layout, Menu, type MenuProps, Space, theme } from "antd";
+import { Button, Grid, Layout, Menu, type MenuProps, Space, theme } from "antd";
 import { ROUTE_PATHS } from "@/constants/common";
 
 const { Header, Sider, Content } = Layout;
 const settingsMenuKey = "system-settings";
 
 const menuItems: MenuProps["items"] = [
+  { key: ROUTE_PATHS.adminDailyBrief, icon: <RobotOutlined />, label: "每日面试简报" },
   { key: ROUTE_PATHS.adminResults, icon: <BarChartOutlined />, label: "面试结果" },
   { key: ROUTE_PATHS.adminPositions, icon: <SolutionOutlined />, label: "岗位管理" },
-  { key: ROUTE_PATHS.adminQuestions, icon: <FileTextOutlined />, label: "笔试管理" },
+  { key: ROUTE_PATHS.adminQuestions, icon: <FileTextOutlined />, label: "题库管理" },
   {
     key: settingsMenuKey,
     icon: <SettingOutlined />,
@@ -31,6 +32,7 @@ const menuItems: MenuProps["items"] = [
 ];
 
 const menuKeys = [
+  ROUTE_PATHS.adminDailyBrief,
   ROUTE_PATHS.adminResults,
   ROUTE_PATHS.adminPositions,
   ROUTE_PATHS.adminQuestions,
@@ -40,6 +42,7 @@ const menuKeys = [
 
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const screens = Grid.useBreakpoint();
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -72,7 +75,8 @@ export default function AdminLayout() {
 
   return (
     <Layout className="h-screen overflow-hidden">
-      <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
+      <Sider trigger={null} collapsible collapsed={collapsed} theme="dark" breakpoint="md"
+        collapsedWidth={screens.md ? 80 : 0} onBreakpoint={(broken) => setCollapsed(broken)}>
         <div
           className={`flex h-16 shrink-0 items-center justify-center font-semibold text-white transition-all ${
             collapsed ? "px-2 text-xs" : "px-4 text-sm"
@@ -89,7 +93,7 @@ export default function AdminLayout() {
           onClick={({ key }) => navigate(key)}
         />
       </Sider>
-      <Layout className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <Layout className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           style={{ padding: "0 16px", background: colorBgContainer }}
           className="flex h-16 shrink-0 items-center justify-between"
@@ -99,18 +103,18 @@ export default function AdminLayout() {
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: 16, width: 64, height: 64 }}
+              style={{ fontSize: 16, width: 40, height: 64 }}
             />
-            <span className="text-base font-semibold text-stone-900">AI 面试管理后台</span>
+            <span className="whitespace-nowrap text-sm font-semibold text-stone-900 sm:text-base">AI 面试管理后台</span>
           </Space>
-          <Link className="text-sm text-emerald-800 hover:text-emerald-950" to={ROUTE_PATHS.interviewBasic}>
+          <Link className="shrink-0 whitespace-nowrap text-xs text-emerald-800 hover:text-emerald-950 sm:text-sm" to={ROUTE_PATHS.interviewBasic}>
             返回面试端
           </Link>
         </Header>
         <Content
-          className="!m-4 min-h-0 flex-1 overflow-y-auto"
+          className="!m-2 min-h-0 min-w-0 flex-1 overflow-y-auto md:!m-4"
           style={{
-            padding: 24,
+            padding: screens.md ? 24 : 12,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}

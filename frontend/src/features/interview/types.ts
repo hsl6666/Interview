@@ -52,6 +52,8 @@ export type CandidateProfile = {
   emergency_relation: string;
   emergency_phone: string;
   expected_salary: string;
+  previous_leave_reason: string;
+  career_plan: string;
   self_evaluation: string;
 };
 
@@ -132,6 +134,7 @@ export type WrittenQuestion = Question & {
 
 export type OralQuestion = {
   id: string;
+  set_id: string;
   title: string;
   prompt: string;
   role_tags: string;
@@ -141,6 +144,30 @@ export type OralQuestion = {
   published: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type OralQuestionSet = {
+  id: string;
+  name: string;
+  description: string;
+  published: boolean;
+  is_active: boolean;
+  question_count: number;
+  published_question_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type OralQuestionSetCreate = {
+  name: string;
+  description: string;
+  question_ids?: string[];
+};
+
+export type OralQuestionSnapshot = {
+  set_id: string;
+  set_name: string;
+  questions: OralQuestion[];
 };
 
 export type JobPosition = {
@@ -187,6 +214,15 @@ export type LlmModelConfig = {
   has_api_key: boolean;
   api_key_masked: string;
   updated_at: string;
+};
+
+export type ModelConnectionResult = {
+  success: boolean;
+  model: string;
+  latency_ms: number;
+  code: string;
+  message: string;
+  http_status?: number;
 };
 
 export type LlmModelConfigUpdate = {

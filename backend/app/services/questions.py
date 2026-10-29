@@ -17,6 +17,7 @@ from app.schemas import (
     WrittenQuestionUpdate,
 )
 from app.services.llm_config import LlmProviderError, chat_completion
+from app.services.oral_question_sets import active_questions, ensure_initialized, get_set, protect_last_active_question
 
 
 DEFAULT_SYSTEM_PROMPT = (
@@ -35,10 +36,8 @@ def get_questions_for_role(db: Session, role: str) -> list[Question]:
 
 
 def get_oral_questions_for_role(db: Session, role: str) -> list[OralQuestion]:
-    ensure_seed_oral_questions(db)
-    published = db.query(OralQuestion).filter(OralQuestion.published.is_(True)).order_by(OralQuestion.sort_order.asc(), OralQuestion.created_at.asc()).all()
-    matched = [item for item in published if _matches_role(item, role)]
-    return matched or published
+    # Selection is now by whole paper. Keep the role argument for existing clients.
+    return active_questions(db)[1]
 
 
 def list_questions(db: Session) -> list[WrittenQuestion]:
@@ -46,9 +45,13 @@ def list_questions(db: Session) -> list[WrittenQuestion]:
     return db.query(WrittenQuestion).order_by(WrittenQuestion.updated_at.desc()).all()
 
 
-def list_oral_questions(db: Session) -> list[OralQuestion]:
-    ensure_seed_oral_questions(db)
-    return db.query(OralQuestion).order_by(OralQuestion.sort_order.asc(), OralQuestion.updated_at.desc()).all()
+def list_oral_questions(db: Session, set_id: str | None = None) -> list[OralQuestion]:
+    ensure_initialized(db)
+    query = db.query(OralQuestion)
+    if set_id is not None:
+        get_set(db, set_id)
+        query = query.filter(OralQuestion.set_id == set_id)
+    return query.order_by(OralQuestion.sort_order.asc(), OralQuestion.created_at.asc(), OralQuestion.id.asc()).all()
 
 
 def create_question(db: Session, payload: WrittenQuestionCreate) -> WrittenQuestion:
@@ -80,6 +83,7 @@ def delete_question(db: Session, question_id: str) -> bool:
 
 
 def create_oral_question(db: Session, payload: OralQuestionCreate) -> OralQuestion:
+    get_set(db, payload.set_id)
     question = OralQuestion(id=uuid4().hex, **payload.model_dump(mode="json"))
     db.add(question)
     db.commit()
@@ -91,6 +95,8 @@ def update_oral_question(db: Session, question_id: str, payload: OralQuestionUpd
     question = db.get(OralQuestion, question_id)
     if question is None:
         return None
+    if payload.published is False:
+        protect_last_active_question(db, question)
     for key, value in payload.model_dump(exclude_unset=True, mode="json").items():
         setattr(question, key, value)
     db.commit()
@@ -102,6 +108,7 @@ def delete_oral_question(db: Session, question_id: str) -> bool:
     question = db.get(OralQuestion, question_id)
     if question is None:
         return False
+    protect_last_active_question(db, question)
     db.delete(question)
     db.commit()
     return True

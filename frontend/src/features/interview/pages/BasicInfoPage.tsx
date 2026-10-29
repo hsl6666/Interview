@@ -4,6 +4,7 @@ import {
   ArrowRightOutlined,
   CameraOutlined,
   CloseOutlined,
+  DownOutlined,
   FileTextOutlined,
   ReloadOutlined,
   UploadOutlined,
@@ -53,6 +54,7 @@ export default function BasicInfoPage() {
   );
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [saving, setSaving] = useState(false);
+  const [familyDetailsOpen, setFamilyDetailsOpen] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [resumeUploadOpen, setResumeUploadOpen] = useState(false);
   const [appliedParsedAt, setAppliedParsedAt] = useState("");
@@ -272,6 +274,7 @@ export default function BasicInfoPage() {
   async function goNext() {
     if (isReadOnly) return;
     if (Object.keys(errors).length > 0) {
+      if (errors.emergency_phone) setFamilyDetailsOpen(true);
       message.error("请先修正表单校验项");
       return;
     }
@@ -586,11 +589,49 @@ export default function BasicInfoPage() {
                 </tr>
               ))}
 
+              {([
+                ["previous_leave_reason", "上家离职原因", "请说明离开上一家公司的原因"],
+                ["career_plan", "未来职业规划", "请描述未来的职业目标与发展计划"],
+                ["self_evaluation", "自我评价", "请简要描述你的优势、能力与待提升之处"],
+              ] as const).map(([field, label, placeholder]) => (
+                <tr key={field}>
+                  <td className={labelCellClass} colSpan={2}>
+                    <label htmlFor={field}>{label}</label>
+                  </td>
+                  <td className={tableCellClass} colSpan={5}>
+                    <Input.TextArea
+                      id={field}
+                      variant="borderless"
+                      value={profile[field]}
+                      placeholder={placeholder}
+                      readOnly={isReadOnly}
+                      onChange={(event) => updateField(field, event.target.value)}
+                      autoSize={{ minRows: 3 }}
+                      className="!w-full !rounded-none !border-0 !bg-transparent !px-2 !py-2 !text-[15px] !leading-7 !shadow-none"
+                    />
+                  </td>
+                </tr>
+              ))}
+
               <tr>
                 <th className={sectionTitleClass} colSpan={7}>
-                  家庭成员
+                  <button
+                    type="button"
+                    aria-expanded={familyDetailsOpen}
+                    aria-controls="family-details"
+                    onClick={() => setFamilyDetailsOpen((open) => !open)}
+                    className="flex min-h-[42px] w-full items-center justify-center gap-3 px-3 py-2 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+                  >
+                    <span>家庭成员</span>
+                    <span className="text-xs font-normal tracking-normal text-slate-500">
+                      {familyDetailsOpen ? "收起" : "展开填写家庭信息及紧急联系人"}
+                    </span>
+                    <DownOutlined className={`text-xs transition-transform ${familyDetailsOpen ? "rotate-180" : ""}`} />
+                  </button>
                 </th>
               </tr>
+            </tbody>
+            <tbody id="family-details" hidden={!familyDetailsOpen}>
               <tr>
                 <td className={labelCellClass} colSpan={2}>
                   关系
@@ -617,7 +658,7 @@ export default function BasicInfoPage() {
               ))}
 
               <tr>
-                <td className={`${labelCellClass} text-xl tracking-[0.2em]`} rowSpan={2}>
+                <td className={`${labelCellClass} text-xl tracking-[0.2em]`}>
                   备注
                 </td>
                 <td className={labelCellClass}>紧急联系人</td>
@@ -626,18 +667,6 @@ export default function BasicInfoPage() {
                 <td className={tableCellClass}>{textInput("emergency_relation")}</td>
                 <td className={labelCellClass}>联系方式</td>
                 <td className={tableCellClass}>{textInput("emergency_phone", "tel")}</td>
-              </tr>
-              <tr>
-                <td className="h-[126px] border border-[#555] p-0 align-top" colSpan={6}>
-                  <Input.TextArea
-                    variant="borderless"
-                    value={profile.self_evaluation}
-                    placeholder="个人评价："
-                    readOnly={isReadOnly}
-                    onChange={(event) => updateField("self_evaluation", event.target.value)}
-                    className="!min-h-[112px] !w-full !resize-y !rounded-none !border-0 !bg-transparent !px-2 !py-2 !leading-7 !shadow-none"
-                  />
-                </td>
               </tr>
             </tbody>
           </table>

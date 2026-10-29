@@ -43,6 +43,8 @@ export const emptyProfile: CandidateProfile = {
   emergency_relation: "",
   emergency_phone: "",
   expected_salary: "",
+  previous_leave_reason: "",
+  career_plan: "",
   self_evaluation: "",
 };
 

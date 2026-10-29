@@ -33,6 +33,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import ReactMarkdown from "react-markdown";
+import QuestionPrompt from "../components/QuestionPrompt";
 import remarkGfm from "remark-gfm";
 import {
   deleteAllInterviewResults,
@@ -836,7 +837,7 @@ function ReportDetail({ detail }: { detail: InterviewResultDetail }) {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
                   Question {index + 1}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-stone-900">{item.question || "系统追问记录缺失"}</p>
+                <div className="mt-2 text-sm leading-6 text-stone-900"><QuestionPrompt content={item.question || "系统追问记录缺失"} /></div>
                 {item.audio_url ? (
                   <div className="mt-3 border-l-2 border-emerald-800 pl-3">
                     <p className="mb-2 text-sm leading-6 text-stone-700">

@@ -5,6 +5,7 @@ import { AudioOutlined, PrinterOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fetchSession, resolveAssetUrl } from "../api";
 import { InterviewShell } from "../components/InterviewShell";
+import QuestionPrompt from "../components/QuestionPrompt";
 import type { InterviewSession, OralRecording, Transcript } from "../types";
 
 type OralAnswerItem = {
@@ -91,7 +92,7 @@ export default function OralAnswersReviewPage() {
 
                   <div className="rounded-lg bg-stone-50 p-4">
                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Question</div>
-                    <p className="mt-2 whitespace-pre-wrap text-base leading-7 text-stone-950">{item.question || "未记录题目"}</p>
+                    <div className="mt-2 text-base leading-7 text-stone-950"><QuestionPrompt content={item.question || "未记录题目"} /></div>
                   </div>
 
                   <div className="mt-4 rounded-lg border border-stone-200 p-4">

@@ -119,6 +119,13 @@ const routes: RouteObject[] = [
         HydrateFallback: ProgressBar,
       },
       {
+        path: "daily-brief",
+        lazy: async () => ({
+          Component: (await import("@/features/interview/admin/pages/DailyBriefPage")).default,
+        }),
+        HydrateFallback: ProgressBar,
+      },
+      {
         path: "configs",
         lazy: async () => ({
           Component: (await import("@/features/interview/admin/pages/ConfigManagementPage")).default,

@@ -45,6 +45,9 @@ class InterviewSession(Base):
         cascade="all, delete-orphan",
         order_by="OralRecording.created_at",
     )
+    oral_question_snapshot: Mapped["OralQuestionSnapshot | None"] = relationship(
+        cascade="all, delete-orphan", uselist=False,
+    )
 
 
 class Attachment(Base):
@@ -133,6 +136,7 @@ class OralQuestion(Base):
     __tablename__ = "oral_questions"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    set_id: Mapped[str | None] = mapped_column(ForeignKey("oral_question_sets.id"), index=True)
     title: Mapped[str] = mapped_column(String(200), default="")
     prompt: Mapped[str] = mapped_column(Text, default="")
     role_tags: Mapped[str] = mapped_column(String(400), default="")
@@ -142,6 +146,40 @@ class OralQuestion(Base):
     published: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    question_set: Mapped["OralQuestionSet"] = relationship(back_populates="questions")
+
+
+class OralQuestionSet(Base):
+    __tablename__ = "oral_question_sets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    published: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    questions: Mapped[list["OralQuestion"]] = relationship(
+        back_populates="question_set", cascade="all, delete-orphan",
+        order_by="(OralQuestion.sort_order, OralQuestion.created_at, OralQuestion.id)",
+    )
+
+
+class OralQuestionSetSelection(Base):
+    __tablename__ = "oral_question_set_selection"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default="global")
+    active_set_id: Mapped[str | None] = mapped_column(ForeignKey("oral_question_sets.id"))
+
+
+class OralQuestionSnapshot(Base):
+    __tablename__ = "oral_question_snapshots"
+
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id"), primary_key=True)
+    # Deliberately not a foreign key: historical papers survive source deletion.
+    set_id: Mapped[str] = mapped_column(String(64))
+    set_name: Mapped[str] = mapped_column(String(200))
+    questions: Mapped[list] = mapped_column(JSON)
 
 
 class JobPosition(Base):
@@ -181,3 +219,33 @@ class InterviewFlowConfig(Base):
     assistant_user_prompt: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class DailyBriefConfig(Base):
+    __tablename__ = "daily_brief_config"
+    id: Mapped[str] = mapped_column(String(30), primary_key=True, default="global")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    ai_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    group_name: Mapped[str] = mapped_column(String(120), default="智枢研发中心")
+    mention_name: Mapped[str] = mapped_column(String(120), default="何松林")
+    mention_user_id: Mapped[str] = mapped_column(String(120), default="")
+    webhook_url: Mapped[str] = mapped_column(Text, default="")
+    signing_secret: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class DailyBriefRun(Base):
+    __tablename__ = "daily_brief_runs"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    report_date: Mapped[str] = mapped_column(String(10), index=True)
+    kind: Mapped[str] = mapped_column(String(20), default="daily")
+    status: Mapped[str] = mapped_column(String(20), default="generating")
+    content: Mapped[str] = mapped_column(Text, default="")
+    facts: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary_mode: Mapped[str] = mapped_column(String(20), default="facts")
+    error: Mapped[str] = mapped_column(Text, default="")
+    target_group: Mapped[str] = mapped_column(String(120), default="")
+    mention_name: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

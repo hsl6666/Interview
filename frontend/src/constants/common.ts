@@ -10,5 +10,6 @@ export const ROUTE_PATHS = {
   adminModels: "/admin/models",
   adminPositions: "/admin/positions",
   adminConfigs: "/admin/configs",
+  adminDailyBrief: "/admin/daily-brief",
   adminSettings: "/admin/settings",
 };

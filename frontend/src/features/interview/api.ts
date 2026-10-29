@@ -14,7 +14,11 @@ import type {
   JobPositionUpdate,
   LlmModelConfig,
   LlmModelConfigUpdate,
+  ModelConnectionResult,
   OralQuestion,
+  OralQuestionSet,
+  OralQuestionSetCreate,
+  OralQuestionSnapshot,
   Question,
   QuestionGenerationRequest,
   QuestionGenerationResponse,
@@ -166,6 +170,35 @@ export async function fetchOralQuestions(role: string) {
   return data;
 }
 
+export async function fetchSessionOralQuestionSet(sessionId: string) {
+  const { data } = await client.get<OralQuestionSnapshot>(`/api/sessions/${sessionId}/oral-question-set`);
+  return data;
+}
+
+export async function fetchAdminOralQuestionSets() {
+  const { data } = await client.get<OralQuestionSet[]>("/api/admin/oral-question-sets");
+  return data;
+}
+
+export async function createAdminOralQuestionSet(payload: OralQuestionSetCreate) {
+  const { data } = await client.post<OralQuestionSet>("/api/admin/oral-question-sets", payload);
+  return data;
+}
+
+export async function updateAdminOralQuestionSet(setId: string, payload: Partial<Pick<OralQuestionSet, "name" | "description" | "published">>) {
+  const { data } = await client.patch<OralQuestionSet>(`/api/admin/oral-question-sets/${setId}`, payload);
+  return data;
+}
+
+export async function activateAdminOralQuestionSet(setId: string) {
+  const { data } = await client.post<OralQuestionSet>(`/api/admin/oral-question-sets/${setId}/activate`);
+  return data;
+}
+
+export async function deleteAdminOralQuestionSet(setId: string) {
+  await client.delete(`/api/admin/oral-question-sets/${setId}`);
+}
+
 export async function fetchPositions() {
   const { data } = await client.get<JobPosition[]>("/api/positions");
   return data;
@@ -216,8 +249,8 @@ export async function deleteAdminWrittenQuestion(questionId: string) {
   return data;
 }
 
-export async function fetchAdminOralQuestions() {
-  const { data } = await client.get<OralQuestion[]>("/api/admin/oral-questions");
+export async function fetchAdminOralQuestions(setId?: string) {
+  const { data } = await client.get<OralQuestion[]>("/api/admin/oral-questions", { params: { set_id: setId } });
   return data;
 }
 
@@ -230,7 +263,7 @@ export async function createAdminOralQuestion(
 
 export async function updateAdminOralQuestion(
   questionId: string,
-  payload: Partial<Omit<OralQuestion, "id" | "created_at" | "updated_at">>,
+  payload: Partial<Omit<OralQuestion, "id" | "set_id" | "created_at" | "updated_at">>,
 ) {
   const { data } = await client.patch<OralQuestion>(`/api/admin/oral-questions/${questionId}`, payload);
   return data;
@@ -353,4 +386,9 @@ export function resolveAssetUrl(url: string) {
   if (!url) return "";
   if (url.startsWith("http")) return url;
   return `${API_BASE_URL}${url}`;
+}
+
+export async function testAdminModelConnection() {
+  const { data } = await client.post<ModelConnectionResult>("/api/admin/model-config/test", undefined, { timeout: 30_000 });
+  return data;
 }

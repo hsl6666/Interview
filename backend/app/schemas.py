@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CandidateProfile(BaseModel):
@@ -38,6 +38,8 @@ class CandidateProfile(BaseModel):
     emergency_relation: str = ""
     emergency_phone: str = ""
     expected_salary: str = ""
+    previous_leave_reason: str = ""
+    career_plan: str = ""
     self_evaluation: str = ""
 
 
@@ -162,29 +164,45 @@ class WrittenQuestionRead(Question):
 
 
 class OralQuestionCreate(BaseModel):
-    title: str
-    prompt: str
+    set_id: str
+    title: str = Field(min_length=1, max_length=200)
+    prompt: str = Field(min_length=1)
     role_tags: str = ""
     difficulty: str = "medium"
     source: str = "manual"
-    sort_order: int = 0
+    sort_order: int = Field(default=0, ge=0)
     published: bool = False
+
+    @field_validator("title", "prompt", mode="before")
+    @classmethod
+    def strip_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
 
 class OralQuestionUpdate(BaseModel):
-    title: Optional[str] = None
-    prompt: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    prompt: Optional[str] = Field(default=None, min_length=1)
     role_tags: Optional[str] = None
     difficulty: Optional[str] = None
     source: Optional[str] = None
-    sort_order: Optional[int] = None
+    sort_order: Optional[int] = Field(default=None, ge=0)
     published: Optional[bool] = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def reject_null(cls, value):
+        if value is None:
+            raise ValueError("字段不能为空")
+        return value.strip() if isinstance(value, str) else value
 
 
 class OralQuestionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    set_id: str
     title: str
     prompt: str
     role_tags: str = ""
@@ -194,6 +212,59 @@ class OralQuestionRead(BaseModel):
     published: bool = False
     created_at: datetime
     updated_at: datetime
+
+
+class OralQuestionSetCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=200)
+    description: str = ""
+    question_ids: list[str] = Field(default_factory=list, max_length=500)
+
+    @field_validator("question_ids")
+    @classmethod
+    def unique_questions(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError("同一道题不能重复选择")
+        return value
+
+    @field_validator("name", "description", mode="before")
+    @classmethod
+    def strip_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class OralQuestionSetUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    published: Optional[bool] = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def reject_null(cls, value):
+        if value is None:
+            raise ValueError("字段不能为空")
+        return value.strip() if isinstance(value, str) else value
+
+
+class OralQuestionSetRead(BaseModel):
+    id: str
+    name: str
+    description: str
+    published: bool
+    is_active: bool
+    question_count: int
+    published_question_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class OralQuestionSnapshotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    set_id: str
+    set_name: str
+    questions: list[OralQuestionRead]
 
 
 class QuestionGenerationRequest(BaseModel):

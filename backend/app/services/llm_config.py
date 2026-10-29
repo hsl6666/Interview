@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from time import perf_counter
 import json
 
 import httpx
@@ -15,7 +16,7 @@ GLOBAL_CONFIG_ID = "global"
 PROVIDER_DEFAULTS = {
     "zhipu": {"model": "glm-4.6", "api_base_url": "https://open.bigmodel.cn/api/paas/v4"},
     "openai": {"model": "gpt-4o-mini", "api_base_url": "https://api.openai.com/v1"},
-    "deepseek": {"model": "deepseek-chat", "api_base_url": "https://api.deepseek.com"},
+    "deepseek": {"model": "deepseek-flash", "api_base_url": "https://api.deepseek.com"},
     "qwen": {"model": "qwen-plus", "api_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"},
     "custom": {"model": "", "api_base_url": ""},
 }
@@ -83,6 +84,7 @@ async def chat_completion(
     temperature: float = 0.6,
     timeout: int = 30,
     require_config: bool = False,
+    max_tokens: int | None = None,
 ) -> str | None:
     config = get_or_create_model_config(db)
     config_error = _validate_chat_config(config)
@@ -106,11 +108,15 @@ async def chat_completion(
                     "model": config.model,
                     "messages": messages,
                     "temperature": temperature,
+                    **({"max_tokens": max_tokens} if max_tokens is not None else {}),
                 },
             )
             response.raise_for_status()
             data = response.json()
-            return str(data["choices"][0]["message"]["content"]).strip()
+            content = data["choices"][0]["message"]["content"]
+            if not isinstance(content, str) or not content.strip():
+                raise ValueError("Empty model content")
+            return content.strip()
     except httpx.TimeoutException as exc:
         raise LlmProviderError("模型请求超时，请检查网络、Base URL 或模型服务状态") from exc
     except httpx.HTTPStatusError as exc:
@@ -219,3 +225,38 @@ def _mask_api_key(api_key: str) -> str:
     if len(api_key) <= 8:
         return "*" * len(api_key)
     return f"{api_key[:4]}...{api_key[-4:]}"
+
+
+async def test_saved_model_connection(db: Session) -> dict:
+    config = get_or_create_model_config(db)
+    started = perf_counter()
+    result = {"success": False, "model": config.model, "code": "provider_error", "message": ""}
+    try:
+        await chat_completion(
+            db, [{"role": "user", "content": "连接检测，请只回复 OK。"}],
+            temperature=0, timeout=20, require_config=True, max_tokens=64,
+        )
+        result.update(success=True, code="ok", message="连接成功，模型已正常返回内容。")
+    except LlmConfigError as exc:
+        result.update(code="configuration", message=str(exc))
+    except LlmProviderError as exc:
+        cause = exc.__cause__
+        if isinstance(cause, httpx.HTTPStatusError):
+            status = cause.response.status_code
+            code, message = {
+                400: ("invalid_request", "模型服务拒绝请求，请核对模型名称和接口兼容性。"),
+                401: ("authentication", "API Key 无效或已失效，请更新密钥并保存后重试。"),
+                402: ("balance", "模型账户余额不足，请在服务商平台检查余额。"),
+                403: ("permission", "当前密钥无权访问该模型，请检查账户权限。"),
+                404: ("model_or_endpoint", "模型或接口不存在，请核对模型名称与 Base URL。"),
+                429: ("rate_limit", "请求频率或额度受限，请稍后重试并检查账户配额。"),
+            }.get(status, ("provider_unavailable", "模型服务暂时不可用，请稍后重试。"))
+            result.update(code=code, message=message, http_status=status)
+        elif isinstance(cause, httpx.TimeoutException):
+            result.update(code="timeout", message="连接检测超时（20秒），请检查网络、Base URL 或稍后重试。")
+        elif isinstance(cause, httpx.HTTPError):
+            result.update(code="network", message="无法连接模型服务，请检查网络和 Base URL。")
+        else:
+            result.update(code="invalid_response", message="服务未返回有效的文本内容，请检查模型与接口兼容性。")
+    result["latency_ms"] = round((perf_counter() - started) * 1000)
+    return result

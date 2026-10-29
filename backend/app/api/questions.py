@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.api.oral_question_sets import router as oral_sets_router
 from app.schemas import (
     OralQuestionCreate,
     OralQuestionRead,
@@ -30,6 +31,7 @@ from app.services.questions import (
 from app.services.llm_config import LlmConfigError, LlmProviderError
 
 router = APIRouter(tags=["questions"])
+router.include_router(oral_sets_router)
 
 
 @router.get("/api/questions", response_model=list[Question])
@@ -69,8 +71,8 @@ def admin_delete_question(question_id: str, db: Session = Depends(get_db)) -> di
 
 
 @router.get("/api/admin/oral-questions", response_model=list[OralQuestionRead])
-def admin_list_oral_questions(db: Session = Depends(get_db)) -> list:
-    return list_oral_questions(db)
+def admin_list_oral_questions(set_id: str | None = None, db: Session = Depends(get_db)) -> list:
+    return list_oral_questions(db, set_id)
 
 
 @router.post("/api/admin/oral-questions", response_model=OralQuestionRead)

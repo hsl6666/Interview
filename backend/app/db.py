@@ -30,3 +30,6 @@ def init_db() -> None:
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    from app.services.oral_question_sets import migrate_oral_question_sets
+
+    migrate_oral_question_sets(engine)
